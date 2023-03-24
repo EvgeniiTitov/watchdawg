@@ -1,6 +1,6 @@
 from .base import BaseClient
 from watchdawg.source import BaseSource
-from watchdawg.util import get_logger, create_socket
+from watchdawg.util import get_logger, create_socket, connect_to_server
 
 
 logger = get_logger(name="tcp_client")
@@ -16,17 +16,10 @@ class TCPClient(BaseClient):
     ) -> None:
         super().__init__(name, video_source)
         self._socket = create_socket()
-        try:
-            self._socket.connect((server_host, server_port))
-        except Exception as e:
-            logger.error(
-                f"Failed to connect to server {server_host}:{server_port}. "
-                f"Error: {e}"
-            )
-            raise e
+        connect_to_server(self._socket, server_host, server_port)
         logger.info(
-            f"TCPClient {name} with video source {video_source.name} connected"
-            f" to server {server_host}:{server_port}"
+            f"TCPClient {name} for video source {video_source.name} "
+            f"initialised"
         )
 
     @property
