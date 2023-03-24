@@ -1,12 +1,16 @@
 import cv2
 import numpy as np
 
-from source.base import BaseSource
+from watchdawg.source.base import BaseSource
 
 
 class WebCamera(BaseSource):
     def __init__(self) -> None:
         self._cap = cv2.VideoCapture(0)
+
+    @property
+    def name(self) -> str:
+        return "WebCamera"
 
     def __iter__(self) -> np.ndarray:
         while True:

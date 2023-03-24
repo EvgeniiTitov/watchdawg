@@ -1,7 +1,5 @@
 import argparse
 
-from loguru import logger
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
@@ -16,7 +14,7 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
-    logger.info(f"Starting client: {args.name}")
+    print(args)
 
 
 if __name__ == "__main__":

@@ -1,12 +1,12 @@
 import abc
 
-from source.base import BaseSource
+from watchdawg.source.base import BaseSource
 
 
 class BaseClient(abc.ABC):
-    def __init__(self, name: str, source: BaseSource) -> None:
+    def __init__(self, name: str, video_source: BaseSource) -> None:
         self._name = name
-        self._source = source
+        self._video_source = video_source
 
     @property
     def name(self) -> str:
