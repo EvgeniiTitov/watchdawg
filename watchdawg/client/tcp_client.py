@@ -54,4 +54,5 @@ class TCPClient(BaseClient):
                 logger.error(
                     f"Failed while sending frame to the server. Error: {e}"
                 )
+                raise
             logger.debug("Sent frame to the server")

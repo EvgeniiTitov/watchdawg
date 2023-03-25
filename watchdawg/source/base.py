@@ -4,8 +4,8 @@ import numpy as np
 
 
 class BaseSource(abc.ABC):
-    @abc.abstractmethod
     @property
+    @abc.abstractmethod
     def name(self) -> str:
         ...
 
