@@ -3,6 +3,7 @@ import struct
 import pickle
 from datetime import datetime
 import threading
+import time
 
 import cv2
 
@@ -17,10 +18,7 @@ logger = get_logger("tcp_server")
 
 """
 TODO:
-
-Multiple clients (threads)
 Keep track of clients (reconnections)
-Clients must introduce themselves
 Different modes (show frames, save to disk, transmit to FE etc)
 Monitor threads
 Unhashable ConnectedClient, I dont like List though
@@ -28,11 +26,23 @@ Unhashable ConnectedClient, I dont like List though
 
 
 class TCPServer(BaseServer):
-    def __init__(self, port: int = Config.SERVER_PORT) -> None:
+    def __init__(
+        self,
+        port: int = Config.SERVER_PORT,
+        state_report_frequency: int = Config.SERVER_STATE_REPORT_FREQUENCY
+    ) -> None:
         self._socket = create_socket()
         self._socket.bind(("", port))
 
         self._connected_clients: List[ConnectedClient] = []
+
+        monitor = threading.Thread(
+            name="State reporter",
+            target=self._monitor_thread,
+            args=(state_report_frequency,),
+            daemon=True
+        )
+        monitor.start()
         logger.info("TCP server initialised")
 
     def start_server(self) -> None:
@@ -41,16 +51,20 @@ class TCPServer(BaseServer):
 
         while True:
             conn, address = self._socket.accept()
-            logger.info(f"Got connection from {address}")
+            logger.info(f"Server got connection from {address}")
+
+            # TODO: Consider getting client name and checking whether we want
+            #       to serve it (known client - camera)
+
             new_client = ConnectedClient(
                 connection=conn, connected_at=datetime.now(), address=address
             )
             self._connected_clients.append(new_client)
             thread = threading.Thread(
-                name=f"Client {address}",
+                name=f"Client {address[0]}:{address[1]}",
                 target=self._safe_handle_client,
                 args=(new_client, self._handle_client),
-                daemon=True,  # TODO: What do we do here?
+                daemon=True,
             )
             thread.start()
 
@@ -59,20 +73,23 @@ class TCPServer(BaseServer):
         client: ConnectedClient,
         handle_func: Callable[[ConnectedClient], None],
     ) -> None:
-        thread_name = threading.get_ident()
-        logger.info(f"Thread {thread_name} started to handle client {client}")
+        thread_name = (
+            f"<Thread (name: {threading.current_thread().name}, "
+            f"indent: {threading.get_ident()})>"
+        )
+        logger.info(f"{thread_name} started to handle client {client.address}")
         try:
             handle_func(client)
         except Exception as e:
             logger.error(
-                f"Thread {thread_name} failed while processing client "
-                f"{client}. Error: {e}"
+                f"{thread_name} failed while processing client "
+                f"{client.address}. Error: {e}"
             )
         else:
-            logger.info(f"Client {client} disconnected")
+            logger.info(f"Client {client.address} disconnected")
 
         self._connected_clients.remove(client)
-        logger.debug(f"Thread {thread_name} finished")
+        logger.debug(f"{thread_name} finished")
 
     def _handle_client(self, client: ConnectedClient) -> None:
         conn = client.connection
@@ -106,6 +123,20 @@ class TCPServer(BaseServer):
             cv2.imshow(f"Client {client.address}", frame)
             cv2.waitKey(1)
 
+    def _monitor_thread(self, interval: int) -> None:
+        logger.info(
+            f"Monitor thread started, reporting every {interval} seconds"
+        )
+        while True:
+            time.sleep(interval)
+            logger.info(
+                f"Connected clients: {len(self._connected_clients)}; "
+                f"Active threads: {threading.active_count()}"
+            )
+
     def stop(self) -> None:
+        # TODO: Report connected clients?
+        # TODO: How to stop gracefully?
+
         logger.info("Stopping the server")
         self._socket.close()

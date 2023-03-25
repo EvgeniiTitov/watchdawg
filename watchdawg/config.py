@@ -9,3 +9,4 @@ class Config:
 
     STRUCT_SIZE_FORMAT = ">L"
     JPEG_QUALITY = 95
+    SERVER_STATE_REPORT_FREQUENCY = 10
