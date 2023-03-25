@@ -1,13 +1,13 @@
 from watchdawg.client.tcp_client import TCPClient
 from watchdawg.source import WebCamera
-from watchdawg.preprocessor import Resizer
+from watchdawg.preprocessor import SimplePreprocessor
 
 
 def main():
     tcp_client = TCPClient(
         "Mac",
         video_source=WebCamera(),
-        frame_preprocessor=Resizer(new_width=320)
+        frame_preprocessor=SimplePreprocessor(new_width=320, flip=True),
     )
     tcp_client.start_client()
 

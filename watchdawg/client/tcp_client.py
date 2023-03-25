@@ -2,6 +2,8 @@ from typing import Optional
 import pickle
 import struct
 
+import cv2
+
 from watchdawg.client import BaseClient
 from watchdawg.source import BaseSource
 from watchdawg.util.logger import get_logger
@@ -43,9 +45,12 @@ class TCPClient(BaseClient):
                     )
                     raise
 
+            # self.show_frame(frame)
+            _, frame = cv2.imencode(
+                ".jpg", frame, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90]
+            )
             data = pickle.dumps(frame, 0)
             size = len(data)
-
             try:
                 self._socket.sendall(
                     struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
