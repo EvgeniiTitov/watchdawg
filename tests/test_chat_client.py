@@ -2,7 +2,7 @@ import socket
 
 
 PORT = 9000
-SERVER_HOST = ""
+SERVER_HOST = "192.168.1.104"
 
 
 if __name__ == '__main__':

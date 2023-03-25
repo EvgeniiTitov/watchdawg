@@ -1,6 +1,6 @@
 import socket
 
-from watchdawg.util import get_logger
+from watchdawg.util.logger import get_logger
 
 
 logger = get_logger("communication")
