@@ -1,8 +1,10 @@
 from watchdawg.client.tcp_client import TCPClient
 from watchdawg.source import WebCamera
 from watchdawg.preprocessor import SimplePreprocessor
+from watchdawg.util.decorators import measure_peak_ram
 
 
+@measure_peak_ram
 def main():
     tcp_client = TCPClient(
         "Mac",
