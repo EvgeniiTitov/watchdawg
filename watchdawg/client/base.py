@@ -14,10 +14,12 @@ class BaseClient(abc.ABC):
         name: str,
         video_source: BaseSource,
         preprocessor: Optional[BaseFramePreprocessor] = None,
+        every_nth_frame: int = 0
     ) -> None:
         self._name = name
         self._video_source = video_source
         self._preprocessor = preprocessor
+        self._every_nth_frame = every_nth_frame
 
     @staticmethod
     def show_frame(frame: np.ndarray, window_name: str = "") -> None:

@@ -23,8 +23,11 @@ class TCPClient(BaseClient):
         frame_preprocessor: Optional[BaseFramePreprocessor] = None,
         server_host: str = Config.SERVER_HOST,
         server_port: int = Config.SERVER_PORT,
+        every_nth_frame: int = 0
     ) -> None:
-        super().__init__(name, video_source, frame_preprocessor)
+        super().__init__(
+            name, video_source, frame_preprocessor, every_nth_frame
+        )
         self._socket = create_socket()
         connect_to_server(self._socket, server_host, server_port)
         logger.info(
@@ -34,7 +37,15 @@ class TCPClient(BaseClient):
 
     def start_client(self) -> None:
         preprocessor = self._preprocessor
+        frame_counter = 0
         for frame in self._video_source:
+            if (
+                self._every_nth_frame != 0
+                and frame_counter % self._every_nth_frame
+            ):
+                frame_counter += 1
+                continue
+
             if preprocessor:
                 try:
                     frame = preprocessor(frame)
@@ -45,7 +56,6 @@ class TCPClient(BaseClient):
                     )
                     raise
 
-            # self.show_frame(frame)
             _, frame = cv2.imencode(
                 ".jpg", frame, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90]
             )
@@ -60,4 +70,5 @@ class TCPClient(BaseClient):
                     f"Failed while sending frame to the server. Error: {e}"
                 )
                 raise
-            logger.debug("Sent frame to the server")
+            frame_counter += 1
+            logger.debug(f"Sent {frame_counter} frame to the server")

@@ -7,7 +7,7 @@ def main():
     tcp_client = TCPClient(
         "Mac",
         video_source=WebCamera(),
-        frame_preprocessor=SimplePreprocessor(new_width=320, flip=True),
+        frame_preprocessor=SimplePreprocessor(new_width=640, flip=True),
     )
     tcp_client.start_client()
 
