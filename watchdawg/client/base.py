@@ -7,9 +7,10 @@ from watchdawg.preprocessor import BaseFramePreprocessor
 
 class BaseClient(abc.ABC):
     def __init__(
-        self, name: str,
+        self,
+        name: str,
         video_source: BaseSource,
-        preprocessor: Optional[BaseFramePreprocessor] = None
+        preprocessor: Optional[BaseFramePreprocessor] = None,
     ) -> None:
         self._name = name
         self._video_source = video_source

@@ -20,7 +20,7 @@ class TCPClient(BaseClient):
         video_source: BaseSource,
         frame_preprocessor: Optional[BaseFramePreprocessor] = None,
         server_host: str = Config.SERVER_HOST,
-        server_port: int = Config.SERVER_PORT
+        server_port: int = Config.SERVER_PORT,
     ) -> None:
         super().__init__(name, video_source, frame_preprocessor)
         self._socket = create_socket()
