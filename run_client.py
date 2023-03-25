@@ -6,12 +6,15 @@ from watchdawg.util.decorators import measure_peak_ram
 
 @measure_peak_ram
 def main():
-    tcp_client = TCPClient(
-        "Mac",
-        video_source=WebCamera(),
-        frame_preprocessor=SimplePreprocessor(new_width=640, flip=True),
-    )
-    tcp_client.start_client()
+    try:
+        tcp_client = TCPClient(
+            "Mac",
+            video_source=WebCamera(),
+            frame_preprocessor=SimplePreprocessor(new_width=640, flip=True),
+        )
+        tcp_client.start_client()
+    except KeyboardInterrupt:
+        pass
 
 
 if __name__ == "__main__":

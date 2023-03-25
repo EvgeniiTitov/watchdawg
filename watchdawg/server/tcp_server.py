@@ -29,7 +29,7 @@ class TCPServer(BaseServer):
     def __init__(
         self,
         port: int = Config.SERVER_PORT,
-        state_report_frequency: int = Config.SERVER_STATE_REPORT_FREQUENCY
+        state_report_frequency: int = Config.SERVER_STATE_REPORT_FREQUENCY,
     ) -> None:
         self._socket = create_socket()
         self._socket.bind(("", port))
@@ -40,7 +40,7 @@ class TCPServer(BaseServer):
             name="State reporter",
             target=self._monitor_thread,
             args=(state_report_frequency,),
-            daemon=True
+            daemon=True,
         )
         monitor.start()
         logger.info("TCP server initialised")
