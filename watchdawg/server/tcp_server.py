@@ -17,13 +17,13 @@ logger = get_logger("tcp_server")
 
 """
 TODO:
-    Multiple clients (threads)
-    Keep track of clients (reconnections)
-    Clients must introduce themselves
-    Different modes (show frames, save to disk, transmit to FE etc)
-    
-    Monitor threads
-    Unhashable ConnectedClient, I dont like List though
+
+Multiple clients (threads)
+Keep track of clients (reconnections)
+Clients must introduce themselves
+Different modes (show frames, save to disk, transmit to FE etc)
+Monitor threads
+Unhashable ConnectedClient, I dont like List though
 """
 
 
@@ -43,23 +43,21 @@ class TCPServer(BaseServer):
             conn, address = self._socket.accept()
             logger.info(f"Got connection from {address}")
             new_client = ConnectedClient(
-                connection=conn,
-                connected_at=datetime.now(),
-                address=address
+                connection=conn, connected_at=datetime.now(), address=address
             )
             self._connected_clients.append(new_client)
             thread = threading.Thread(
                 name=f"Client {address}",
                 target=self._safe_handle_client,
                 args=(new_client, self._handle_client),
-                daemon=True  # TODO: What do we do here?
+                daemon=True,  # TODO: What do we do here?
             )
             thread.start()
 
     def _safe_handle_client(
         self,
         client: ConnectedClient,
-        handle_func: Callable[[ConnectedClient], None]
+        handle_func: Callable[[ConnectedClient], None],
     ) -> None:
         thread_name = threading.get_ident()
         logger.info(f"Thread {thread_name} started to handle client {client}")
@@ -84,9 +82,7 @@ class TCPServer(BaseServer):
             while len(data) < payload_size:
                 data += conn.recv(4096)
                 if not data:
-                    cv2.destroyAllWindows()
-                    conn, address = self._socket.accept()
-                    continue
+                    return
 
             # Receive image raw data from client socket
             packed_message_size = data[:payload_size]
