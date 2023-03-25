@@ -7,7 +7,11 @@ import cv2
 from watchdawg.client import BaseClient
 from watchdawg.source import BaseSource
 from watchdawg.util.logger import get_logger
-from watchdawg.util.communication import create_socket, connect_to_server
+from watchdawg.util.communication import (
+    create_socket,
+    connect_to_server,
+    close_socket
+)
 from watchdawg.preprocessor import BaseFramePreprocessor
 from watchdawg.config import Config
 
@@ -37,6 +41,7 @@ class TCPClient(BaseClient):
 
     def start_client(self) -> None:
         preprocessor = self._preprocessor
+        jpeg_quality = Config.JPEG_QUALITY
         frame_counter = 0
         for frame in self._video_source:
             if (
@@ -46,29 +51,39 @@ class TCPClient(BaseClient):
                 frame_counter += 1
                 continue
 
-            if preprocessor:
-                try:
-                    frame = preprocessor(frame)
-                except Exception as e:
-                    logger.error(
-                        f"Failed while preprocessing frame using preprocessor "
-                        f"{preprocessor}. Error: {e}"
-                    )
-                    raise
-
-            _, frame = cv2.imencode(
-                ".jpg", frame, params=[int(cv2.IMWRITE_JPEG_QUALITY), 90]
-            )
-            data = pickle.dumps(frame, 0)
-            size = len(data)
             try:
-                self._socket.sendall(
-                    struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
+                if preprocessor:
+                    frame = preprocessor(frame)
+
+                _, frame = cv2.imencode(
+                    ".jpg",
+                    frame,
+                    params=[int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality]
+                )
+                data = pickle.dumps(frame, 0)
+                size = len(data)
+                bytes_to_send = (
+                        struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
                 )
             except Exception as e:
                 logger.error(
-                    f"Failed while sending frame to the server. Error: {e}"
+                    f"Failed while preparing frame for transmission. "
+                    f"Error: {e}"
+                )
+                self.stop()
+                raise
+
+            try:
+                self._socket.sendall(bytes_to_send)
+            except Exception as e:
+                logger.error(
+                    f"Failed while sending frame bytes to the server. "
+                    f"Error: {e}"
                 )
                 raise
+
             frame_counter += 1
             logger.debug(f"Sent {frame_counter} frame to the server")
+
+    def stop(self) -> None:
+        close_socket(self._socket)

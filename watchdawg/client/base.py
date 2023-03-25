@@ -33,3 +33,7 @@ class BaseClient(abc.ABC):
     @abc.abstractmethod
     def start_client(self) -> None:
         ...
+
+    @abc.abstractmethod
+    def stop(self) -> None:
+        ...

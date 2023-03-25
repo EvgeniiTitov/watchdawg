@@ -26,3 +26,9 @@ def connect_to_server(
         )
         raise e
     logger.info(f"Connected to server {server_host}:{server_port}")
+
+
+def close_socket(client_socket: socket.socket) -> None:
+    client_socket.shutdown(socket.SHUT_RDWR)
+    client_socket.close()
+    logger.info("Socket closed gracefully")
