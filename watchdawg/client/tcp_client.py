@@ -10,7 +10,7 @@ from watchdawg.util.logger import get_logger
 from watchdawg.util.communication import (
     create_socket,
     connect_to_server,
-    close_socket
+    close_socket,
 )
 from watchdawg.preprocessor import BaseFramePreprocessor
 from watchdawg.config import Config
@@ -27,7 +27,7 @@ class TCPClient(BaseClient):
         frame_preprocessor: Optional[BaseFramePreprocessor] = None,
         server_host: str = Config.SERVER_HOST,
         server_port: int = Config.SERVER_PORT,
-        every_nth_frame: int = 0
+        every_nth_frame: int = 0,
     ) -> None:
         super().__init__(
             name, video_source, frame_preprocessor, every_nth_frame
@@ -58,12 +58,12 @@ class TCPClient(BaseClient):
                 _, frame = cv2.imencode(
                     ".jpg",
                     frame,
-                    params=[int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality]
+                    params=[int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
                 )
                 data = pickle.dumps(frame, 0)
                 size = len(data)
                 bytes_to_send = (
-                        struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
+                    struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
                 )
             except Exception as e:
                 logger.error(

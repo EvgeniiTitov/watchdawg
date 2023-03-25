@@ -14,7 +14,7 @@ class BaseClient(abc.ABC):
         name: str,
         video_source: BaseSource,
         preprocessor: Optional[BaseFramePreprocessor] = None,
-        every_nth_frame: int = 0
+        every_nth_frame: int = 0,
     ) -> None:
         self._name = name
         self._video_source = video_source
