@@ -6,7 +6,6 @@ import numpy as np
 
 
 class BaseProcessor(abc.ABC):
-
     @abc.abstractmethod
     def register_client(
         self, client_name: str, client_address: Tuple[str, int]

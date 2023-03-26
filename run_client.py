@@ -11,7 +11,7 @@ def main():
     preprocessor = Resizer(
         new_width=Config.MODEL_INPUT_WIDTH,
         new_height=Config.MODEL_INPUT_HEIGHT,
-        flip=True
+        flip=True,
     )
     try:
         tcp_client = TCPClient(

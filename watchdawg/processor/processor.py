@@ -1,6 +1,6 @@
 import uuid
 from queue import Queue
-from typing import MutableMapping, Tuple
+from typing import MutableMapping, Tuple, Union
 import threading
 
 import numpy as np
@@ -22,7 +22,6 @@ class ProcessorStoppedError(Exception):
 
 
 class Processor(BaseProcessor):
-
     def __init__(self, client_queue_size: int) -> None:
         # TODO: Gets model scorer
         # TODO: Gets a sink to forward processed frames to
@@ -44,7 +43,9 @@ class Processor(BaseProcessor):
             )
 
         client_id = uuid.uuid4()
-        client_queue = Queue(maxsize=self._client_queue_size)
+        client_queue: "Queue[Union[np.ndarray, ClientDisconnectedMessage]]" = (
+            Queue(maxsize=self._client_queue_size)
+        )
         with self._lock:
             self._clients[client_id] = client_queue
         logger.info(
@@ -57,13 +58,13 @@ class Processor(BaseProcessor):
             raise KeyError(f"Client with ID {client_id} is not registered")
 
         with self._lock:
-            client_queue = self._clients.get(client_id)
+            client_queue = self._clients[client_id]
         client_queue.put(ClientDisconnectedMessage())
 
     def submit_frame_for_processing(
         self, client_id: uuid.UUID, frame: np.ndarray
     ) -> None:
-        # TODO: What if queue is full? + it holds old frames we don't care about
+        # TODO: What if queue is full? it holds old frames we don't care about
         #       and need to prioritise new ones
         #       If queue gets full, there is a congestion downstream, client
         #       won't slow down sending frames, so recreate the queue dropping
@@ -77,13 +78,13 @@ class Processor(BaseProcessor):
             raise KeyError(f"Client with ID {client_id} is not registered")
 
         with self._lock:
-            client_queue = self._clients.get(client_id)
+            client_queue = self._clients[client_id]
         client_queue.put(frame)
 
     def run(self) -> None:
         logger.debug("Processor started")
         # TODO: Runs in a dedicated thread
-        #       1. Accumulates a batch of frames and passes it to the model scorer
+        #       1. Accumulates a batch of frames and passes it to model scorer
         #       2. Receive results
         #       3. Pass to sink (results writer) to show/write to disk
 
@@ -94,7 +95,7 @@ class Processor(BaseProcessor):
     def _collect_batch(self):
         # TODO: Could be limited by a batch size or time window
         #       If batch size < total connected clients, start collecting next
-        #       batch from where you left off (not from the start of the queues)
+        #       batch from where you left (not from the start of the queues)
         pass
 
     def stop(self, timeout: int = 10) -> None:

@@ -14,7 +14,7 @@ class Resizer(BaseFramePreprocessor):
         frame = cv2.resize(
             frame,
             (self._new_width, self._new_height),
-            interpolation=cv2.INTER_AREA
+            interpolation=cv2.INTER_AREA,
         )
         if self._flip:
             frame = cv2.flip(frame, 180)
