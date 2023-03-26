@@ -11,6 +11,10 @@ from watchdawg.server.base import BaseServer, ConnectedClient
 from watchdawg.util.logger import get_logger
 from watchdawg.util.communication import create_socket
 from watchdawg.config import Config
+from watchdawg.util.resources import (
+    get_current_process_ram_usage,
+    get_current_process_cpu_usage
+)
 
 
 logger = get_logger("tcp_server")
@@ -131,9 +135,15 @@ class TCPServer(BaseServer):
         )
         while True:
             time.sleep(interval)
+            # TODO: Measure CPU usage over interval - blocking?
+            # TODO: Add network usage
+            cpu_usage = get_current_process_cpu_usage()
+            memory_usage = get_current_process_ram_usage()
             logger.info(
                 f"Connected clients: {len(self._connected_clients)}; "
-                f"Active threads: {threading.active_count()}"
+                f"Active threads: {threading.active_count()}; "
+                f"CPU usage: {cpu_usage}%; "
+                f"Memory usage (MB): {memory_usage}"
             )
 
     def _thread_safe_call(self, func: Callable) -> None:
