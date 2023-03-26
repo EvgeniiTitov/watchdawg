@@ -12,7 +12,7 @@ from watchdawg.util.communication import (
     connect_to_server,
     close_socket,
 )
-from watchdawg.preprocessor import BaseFramePreprocessor
+from watchdawg.client.preprocessor import BaseFramePreprocessor
 from watchdawg.config import Config
 
 
@@ -83,7 +83,9 @@ class TCPClient(BaseClient):
                 raise
 
             frame_counter += 1
-            logger.debug(f"Sent {frame_counter} frame to the server")
+
+            if not frame_counter % 100:
+                logger.debug(f"Sent {frame_counter} frame to the server")
 
     def stop(self) -> None:
         close_socket(self._socket)

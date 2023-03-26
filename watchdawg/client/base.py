@@ -5,7 +5,7 @@ import numpy as np
 import cv2
 
 from watchdawg.source import BaseSource
-from watchdawg.preprocessor import BaseFramePreprocessor
+from watchdawg.client.preprocessor import BaseFramePreprocessor
 
 
 class BaseClient(abc.ABC):
