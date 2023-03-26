@@ -13,7 +13,7 @@ from watchdawg.util.communication import create_socket
 from watchdawg.config import Config
 from watchdawg.util.resources import (
     get_current_process_ram_usage,
-    get_current_process_cpu_usage
+    get_current_process_cpu_usage,
 )
 
 
