@@ -31,4 +31,4 @@ def connect_to_server(
 def close_socket(client_socket: socket.socket) -> None:
     client_socket.shutdown(socket.SHUT_RDWR)
     client_socket.close()
-    logger.info("Socket closed gracefully")
+    logger.debug("Socket closed gracefully")

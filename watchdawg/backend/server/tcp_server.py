@@ -1,3 +1,4 @@
+import uuid
 from typing import List, Callable
 import struct
 import pickle
@@ -7,40 +8,39 @@ import time
 
 import cv2
 
-from watchdawg.server.base import BaseServer, ConnectedClient
+from watchdawg.backend.server.interface import BaseServer
+from watchdawg.backend.messages import ConnectedClient
 from watchdawg.util.logger import get_logger
 from watchdawg.util.communication import create_socket
-from watchdawg.config import Config
 from watchdawg.util.resources import (
     get_current_process_ram_usage,
     get_current_process_cpu_usage,
 )
+from watchdawg.config import Config
+from watchdawg.backend.feed_processor import FeedProcessor
 
 
 logger = get_logger("tcp_server")
 
 
-"""
-TODO:
-Keep track of clients (reconnections)
-Different modes (show frames, save to disk, transmit to FE etc)
-Monitor threads
-Unhashable ConnectedClient, I dont like List though
-"""
-
-
 class TCPServer(BaseServer):
     def __init__(
         self,
+        feed_processor: FeedProcessor,
         port: int = Config.SERVER_PORT,
         state_report_frequency: int = Config.SERVER_STATE_REPORT_FREQUENCY,
     ) -> None:
         self._socket = create_socket()
         self._socket.bind(("", port))
 
+        self._feed_processor = feed_processor
         self._lock = threading.Lock()
+
+        # TODO: Could we replace list with something quicket?
         self._connected_clients: List[ConnectedClient] = []
 
+        # TODO: Consider keeping track of threads (not daemons), make sockets
+        #       not blocking and manage threads if there are no connections
         monitor = threading.Thread(
             name="State reporter",
             target=self._monitor_thread,
@@ -48,43 +48,39 @@ class TCPServer(BaseServer):
             daemon=True,
         )
         monitor.start()
-        logger.info("TCP server initialised")
+        logger.debug("TCP server initialised")
 
     def start_server(self) -> None:
         self._socket.listen()
-        logger.info("TCP server started, listening for connections")
-
+        logger.info("TCP server started, listening for connections...")
         while True:
             conn, address = self._socket.accept()
-            logger.info(f"Server got connection from {address}")
+            logger.info(f"Received connection from {address}")
 
-            # TODO: Consider getting client name and checking whether we want
-            #       to serve it (known client - camera)
-
+            client_id = uuid.uuid4()
             new_client = ConnectedClient(
-                connection=conn, connected_at=datetime.now(), address=address
+                client_id=client_id,
+                connection=conn,
+                connected_at=datetime.now(),
+                address=address,
             )
             thread = threading.Thread(
-                name=f"Client {address[0]}:{address[1]}",
                 target=self._safe_handle_client,
-                args=(new_client, self._handle_client),
+                args=(new_client,),
                 daemon=True,
             )
             thread.start()
 
-    def _safe_handle_client(
-        self,
-        client: ConnectedClient,
-        handle_func: Callable[[ConnectedClient], None],
-    ) -> None:
-        self._thread_safe_call(lambda: self._connected_clients.append(client))
-        thread_name = (
-            f"<Thread (name: {threading.current_thread().name}, "
-            f"indent: {threading.get_ident()})>"
+    def _safe_handle_client(self, client: ConnectedClient) -> None:
+        """To avoid leaking threads, ensure they complete even if they fail"""
+        thread_name = threading.get_ident()
+        logger.debug(
+            f"{thread_name} started to handle client {client.address}"
         )
-        logger.info(f"{thread_name} started to handle client {client.address}")
+        self._thread_safe_call(lambda: self._connected_clients.append(client))
         try:
-            handle_func(client)
+            self._feed_processor.register_client(client)
+            self._serve_client(client)
         except Exception as e:
             logger.error(
                 f"{thread_name} failed while processing client "
@@ -93,14 +89,16 @@ class TCPServer(BaseServer):
         else:
             logger.info(f"Client {client.address} disconnected")
 
+        self._feed_processor.unregister_client(client.client_id)
         self._thread_safe_call(lambda: self._connected_clients.remove(client))
         logger.debug(f"{thread_name} finished")
 
-    def _handle_client(self, client: ConnectedClient) -> None:
+    def _serve_client(self, client: ConnectedClient) -> None:
+        # TODO: This thing needs to love and understanding
         conn = client.connection
+        client_id = client.client_id
         data = b""
         payload_size = struct.calcsize(Config.STRUCT_SIZE_FORMAT)
-        window_name = f"Client {client.address}"
         while True:
             while len(data) < payload_size:
                 data += conn.recv(4096)
@@ -125,12 +123,12 @@ class TCPServer(BaseServer):
                 frame_data, fix_imports=True, encoding="bytes"
             )
             frame = cv2.imdecode(frame, cv2.IMREAD_COLOR)
-            cv2.imshow(window_name, frame)
-            cv2.waitKey(1)
-        cv2.destroyWindow(window_name)
+            self._feed_processor.enqueue_frame_for_processing(
+                client_id=client_id, frame=frame
+            )
 
     def _monitor_thread(self, interval: int) -> None:
-        logger.info(
+        logger.debug(
             f"Monitor thread started, reporting every {interval} seconds"
         )
         while True:
@@ -150,9 +148,8 @@ class TCPServer(BaseServer):
         with self._lock:
             func()
 
-    def stop(self) -> None:
-        # TODO: Report connected clients?
-        # TODO: How to stop gracefully?
-
+    def stop_server(self) -> None:
+        # TODO: Report still connected clients?
+        # TODO: Stop everything gracefully
         logger.info("Stopping the server")
         self._socket.close()
