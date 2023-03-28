@@ -29,6 +29,10 @@ def connect_to_server(
 
 
 def close_socket(client_socket: socket.socket) -> None:
-    client_socket.shutdown(socket.SHUT_RDWR)
-    client_socket.close()
-    logger.debug("Socket closed gracefully")
+    try:
+        client_socket.shutdown(socket.SHUT_RDWR)
+        client_socket.close()
+    except Exception as e:
+        logger.error(f"Failed while closing the socket. Error: {e}")
+    else:
+        logger.debug("Socket closed gracefully")

@@ -20,6 +20,7 @@ class ClientDisconnectedMessage(FeedProcessorMessage):
 class ProcessFrameMessage(FeedProcessorMessage):
     client_id: uuid.UUID
     frame: np.ndarray
+    detections: Optional[dict] = None
 
 
 @dataclass

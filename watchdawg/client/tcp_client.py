@@ -40,6 +40,16 @@ class TCPClient(BaseClient):
         )
 
     def start_client(self) -> None:
+        """Ensures the socket gets closed even if the client fails"""
+        try:
+            self._send_feed()
+        except Exception as e:
+            logger.error(f"Failed while sending feed to server. Error: {e}")
+            self.stop()
+            raise e
+        logger.info("Client finished")
+
+    def _send_feed(self):
         preprocessor = self._preprocessor
         jpeg_quality = Config.JPEG_QUALITY
         frame_counter = 0
@@ -51,41 +61,22 @@ class TCPClient(BaseClient):
                 frame_counter += 1
                 continue
 
-            try:
-                if preprocessor:
-                    frame = preprocessor(frame)
+            if preprocessor:
+                frame = preprocessor(frame)
 
-                _, frame = cv2.imencode(
-                    ".jpg",
-                    frame,
-                    params=[int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
-                )
-                data = pickle.dumps(frame, 0)
-                size = len(data)
-                bytes_to_send = (
-                    struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
-                )
-            except Exception as e:
-                logger.error(
-                    f"Failed while preparing frame for transmission. "
-                    f"Error: {e}"
-                )
-                self.stop()
-                raise
-
-            try:
-                self._socket.sendall(bytes_to_send)
-            except Exception as e:
-                logger.error(
-                    f"Failed while sending frame bytes to the server. "
-                    f"Error: {e}"
-                )
-                raise
+            _, frame = cv2.imencode(
+                ".jpg",
+                frame,
+                params=[int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality],
+            )
+            data = pickle.dumps(frame, 0)
+            size = len(data)
+            bytes_to_send = struct.pack(Config.STRUCT_SIZE_FORMAT, size) + data
+            self._socket.sendall(bytes_to_send)
 
             frame_counter += 1
-
             if not frame_counter % 100:
-                logger.debug(f"Sent {frame_counter} frame to the server")
+                logger.info(f"Sent {frame_counter} frame to the server")
 
     def stop(self) -> None:
         close_socket(self._socket)

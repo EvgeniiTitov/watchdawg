@@ -1,1 +1,1 @@
-from .interface import BaseResultsWriter
+from .writer import ResultWriterMode, ResultsWriter

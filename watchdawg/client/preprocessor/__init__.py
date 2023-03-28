@@ -1,2 +1,2 @@
-from .base import BaseFramePreprocessor
+from .interface import BaseFramePreprocessor
 from .resizer import Resizer

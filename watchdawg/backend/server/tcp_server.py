@@ -39,6 +39,7 @@ class TCPServer(BaseServer):
         # TODO: Could we replace list with something quicket?
         self._connected_clients: List[ConnectedClient] = []
 
+        self._stop_event = threading.Event()
         # TODO: Consider keeping track of threads (not daemons), make sockets
         #       not blocking and manage threads if there are no connections
         monitor = threading.Thread(
@@ -51,9 +52,10 @@ class TCPServer(BaseServer):
         logger.debug("TCP server initialised")
 
     def start_server(self) -> None:
-        self._socket.listen()
         logger.info("TCP server started, listening for connections...")
-        while True:
+
+        self._socket.listen()
+        while not self._stop_event.is_set():
             conn, address = self._socket.accept()
             logger.info(f"Received connection from {address}")
 
@@ -71,9 +73,11 @@ class TCPServer(BaseServer):
             )
             thread.start()
 
+        logger.debug("TCP server stopped")
+
     def _safe_handle_client(self, client: ConnectedClient) -> None:
         """To avoid leaking threads, ensure they complete even if they fail"""
-        thread_name = threading.get_ident()
+        thread_name = f"Thread {threading.get_ident()}"
         logger.debug(
             f"{thread_name} started to handle client {client.address}"
         )
@@ -86,15 +90,11 @@ class TCPServer(BaseServer):
                 f"{thread_name} failed while processing client "
                 f"{client.address}. Error: {e}"
             )
-        else:
-            logger.info(f"Client {client.address} disconnected")
-
         self._feed_processor.unregister_client(client.client_id)
         self._thread_safe_call(lambda: self._connected_clients.remove(client))
-        logger.debug(f"{thread_name} finished")
+        logger.debug(f"{thread_name} finished with client {client.address}")
 
     def _serve_client(self, client: ConnectedClient) -> None:
-        # TODO: This thing needs to love and understanding
         conn = client.connection
         client_id = client.client_id
         data = b""
@@ -103,6 +103,7 @@ class TCPServer(BaseServer):
             while len(data) < payload_size:
                 data += conn.recv(4096)
                 if not data:
+                    logger.debug(f"Client {client.address} disconnected")
                     return
 
             # Receive image raw data from client socket
@@ -151,5 +152,7 @@ class TCPServer(BaseServer):
     def stop_server(self) -> None:
         # TODO: Report still connected clients?
         # TODO: Stop everything gracefully
+
         logger.info("Stopping the server")
+        self._stop_event.set()
         self._socket.close()
