@@ -9,3 +9,8 @@ class BaseServer(abc.ABC):
     @abc.abstractmethod
     def stop_server(self) -> None:
         ...
+
+    @property
+    @abc.abstractmethod
+    def total_connected_clients(self) -> int:
+        ...
