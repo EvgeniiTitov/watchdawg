@@ -74,10 +74,17 @@ class ResultsWriter(threading.Thread):
                     client_queue,
                     handler_thread,
                 )
+
             elif isinstance(message, ClientDisconnectedMessage):
                 client_id = message.client_id
                 client_queue, _ = self._client_handlers[client_id]
+
+                # TODO: This is blocking
                 client_queue.put(ClientDisconnectedMessage)
+
+                # TODO: This naively assumes the thread will exit, no joining?
+                del self._client_handlers[client_id]
+
             elif isinstance(message, FramesBatchMessage):
                 self._draw_detections(message)
                 for item in message.batch:
