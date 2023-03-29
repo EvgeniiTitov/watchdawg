@@ -10,7 +10,7 @@ def create_socket(
     family: int = socket.AF_INET, type: int = socket.SOCK_STREAM
 ) -> socket.socket:
     sock = socket.socket(family=family, type=type)
-    logger.debug(f"Created socket")
+    logger.debug("Created socket")
     return sock
 
 

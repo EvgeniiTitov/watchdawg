@@ -71,7 +71,10 @@ class ResultsWriter(threading.Thread):
                 client_queue = Queue(Config.CLIENT_QUEUE)  # type: ignore
                 handler_thread = threading.Thread(
                     target=self._handle_client_data,
-                    args=(client_id, client_queue,)
+                    args=(
+                        client_id,
+                        client_queue,
+                    ),
                 )
                 handler_thread.start()
                 self._client_handlers[client_id] = (
