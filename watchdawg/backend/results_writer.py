@@ -1,6 +1,6 @@
 import enum
 import uuid
-from queue import Queue, Empty
+from queue import Queue, Empty, Full
 import os
 import threading
 from typing import MutableMapping, Tuple
@@ -95,7 +95,20 @@ class ResultsWriter(threading.Thread):
                     client_id = item.client_id
                     frame = item.frame
                     # TODO: Blocking
-                    self._client_handlers[client_id][0].put(frame)
+
+                    try:
+                        self._client_handlers[client_id][0].put_nowait(frame)
+                    except Full:
+                        logger.warning(
+                            "Client handler queue is full, dropping frames"
+                        )
+                        continue
+                    except Exception as e:
+                        logger.error(
+                            f"Error occurred while directing frame to its "
+                            f"handler. Error: {e}"
+                        )
+                        continue
 
         logger.debug("ResultsWriter finished")
 

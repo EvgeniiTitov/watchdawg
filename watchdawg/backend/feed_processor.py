@@ -73,6 +73,10 @@ class FeedProcessor(threading.Thread):
             except Empty:
                 break
 
+            # TODO: BUG! Disconnection message gets sent while we might wait
+            #       a bit more (time window), before sending frames for already
+            #       disconnected client to RW!
+
             if isinstance(message, ProcessFrameMessage):
                 batch.append(message)
             elif isinstance(
