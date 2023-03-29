@@ -1,6 +1,6 @@
 import enum
 import uuid
-from queue import Queue
+from queue import Queue, Empty
 import os
 import threading
 from typing import MutableMapping, Tuple
@@ -57,7 +57,10 @@ class ResultsWriter(threading.Thread):
         logger.debug("ResultsWriter started")
 
         while not self._stop_event.is_set():
-            message = self._queue.get()
+            try:
+                message = self._queue.get(timeout=0.5)
+            except Empty:
+                continue
 
             if isinstance(message, NewClientConnectedMessage):
                 client_id = message.client_id
@@ -67,7 +70,8 @@ class ResultsWriter(threading.Thread):
 
                 client_queue = Queue(Config.CLIENT_QUEUE)  # type: ignore
                 handler_thread = threading.Thread(
-                    target=self._handle_client_data, args=(client_queue,)
+                    target=self._handle_client_data,
+                    args=(client_id, client_queue,)
                 )
                 handler_thread.start()
                 self._client_handlers[client_id] = (
@@ -103,6 +107,7 @@ class ResultsWriter(threading.Thread):
         )
         window_name = f"Client {client_id}"
         cv2.namedWindow(window_name)
+
         while True:
             message = client_queue.get()
             if isinstance(message, ClientDisconnectedMessage):
@@ -110,6 +115,7 @@ class ResultsWriter(threading.Thread):
             else:
                 if self._mode == ResultWriterMode.SHOW_FRAMES:
                     cv2.imshow(window_name, message)
+                    cv2.waitKey(1)
                 elif self._mode == ResultWriterMode.SAVE_FRAMES:
                     # TODO: Save
                     pass
@@ -117,6 +123,7 @@ class ResultsWriter(threading.Thread):
                     # TODO: Show and save on disk
                     pass
 
+        cv2.destroyWindow(window_name)
         logger.debug(
             f"ResultsWriter thread handling client {client_id} stopped"
         )
@@ -129,4 +136,4 @@ class ResultsWriter(threading.Thread):
         if not self._stop_event.is_set():
             self._stop_event.set()
         else:
-            logger.warning("Called stopp on already stopping ResultsWriter")
+            logger.warning("Called stop on already stopping ResultsWriter")

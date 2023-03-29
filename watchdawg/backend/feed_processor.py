@@ -44,7 +44,6 @@ class FeedProcessor(threading.Thread):
             if not len(frames_batch.batch):
                 time.sleep(0.1)
                 continue
-            logger.debug("Got a batch of frames")
 
             detections = self._model(
                 [item.frame for item in frames_batch.batch]
@@ -53,7 +52,6 @@ class FeedProcessor(threading.Thread):
                 detections, frames_batch.batch
             ):
                 frame_message.detections = detection
-            logger.debug("Scored the model")
 
             self._events_queue_out.put(frames_batch)
 

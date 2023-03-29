@@ -45,8 +45,10 @@ class TCPServer(BaseServer):
         self._accept_conns_thread.start()
 
     def _accept_connections(self) -> None:
-        logger.info("TCP server started, listening for connections...")
+        logger.info("TCP server started")
         self._socket.listen()
+
+        logger.info("Listening for incoming connections...")
         while not self._stop_event.is_set():
             conn, address = self._socket.accept()
             # .accept() is blocking
@@ -89,8 +91,6 @@ class TCPServer(BaseServer):
                 f"{thread_name} failed while processing client "
                 f"{client.address}. Error: {e}"
             )
-        else:
-            logger.info(f"Client {client.address} disconnected")
 
         self._events_queue.put(ClientDisconnectedMessage(client_id))
         with self._lock:

@@ -81,5 +81,5 @@ class App:
                 f"Connected clients: {self._server.total_connected_clients}; "
                 f"Active threads: {threading.active_count()}; "
                 f"CPU usage: {cpu_usage}%; "
-                f"Memory usage (MB): {memory_usage}"
+                f"Memory usage (MB): {memory_usage: .2f}"
             )
