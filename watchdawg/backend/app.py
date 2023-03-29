@@ -52,7 +52,6 @@ class App:
         self._feed_processor.start()
         self._server.start_server()
         self._reporter_thread.start()
-        logger.info("App started")
 
     def stop(self):
         self._server.stop_server()

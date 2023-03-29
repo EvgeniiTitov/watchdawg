@@ -1,13 +1,16 @@
-from watchdawg.server.tcp_server import TCPServer
+import time
+
+from watchdawg.backend.app import App
 
 
 def main():
-    server = TCPServer()
+    app = App()
+    app.start()
     try:
-        server.start_server()
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
-        pass
-    server.stop()
+        app.stop()
 
 
 if __name__ == "__main__":

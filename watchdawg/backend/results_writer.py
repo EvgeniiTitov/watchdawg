@@ -5,6 +5,8 @@ import os
 import threading
 from typing import MutableMapping, Tuple
 
+import cv2
+
 from watchdawg.util.logger import get_logger
 from watchdawg.backend.messages import (
     NewClientConnectedMessage,
@@ -37,11 +39,9 @@ class ResultsWriter(threading.Thread):
         self._mode = mode
         self._save_folder = save_folder
         self._stop_event = threading.Event()
-
         self._client_handlers: MutableMapping[
             uuid.UUID, Tuple[Queue, threading.Thread]
         ] = {}
-
         self._prepare()
         logger.debug("ResultsWriter initialised")
 
@@ -101,15 +101,15 @@ class ResultsWriter(threading.Thread):
         logger.debug(
             f"ResultsWriter thread handling client {client_id} started"
         )
-
+        window_name = f"Client {client_id}"
+        cv2.namedWindow(window_name)
         while True:
             message = client_queue.get()
             if isinstance(message, ClientDisconnectedMessage):
                 break
             else:
                 if self._mode == ResultWriterMode.SHOW_FRAMES:
-                    # TODO: Show
-                    pass
+                    cv2.imshow(window_name, message)
                 elif self._mode == ResultWriterMode.SAVE_FRAMES:
                     # TODO: Save
                     pass
