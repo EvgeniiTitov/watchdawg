@@ -1,10 +1,11 @@
 import time
 
 from watchdawg.backend.app import App
+from watchdawg.backend.results_writer import ResultWriterMode
 
 
 def main():
-    app = App()
+    app = App(mode=ResultWriterMode.SHOW_FRAMES)
     app.start()
     try:
         while True:

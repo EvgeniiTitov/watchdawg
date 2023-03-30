@@ -1,5 +1,5 @@
 import time
-from typing import List
+from typing import Optional, List, Tuple
 from queue import Queue, Empty
 import threading
 
@@ -10,6 +10,7 @@ from watchdawg.backend.messages import (
     NewClientConnectedMessage,
     FramesBatchMessage,
 )
+from watchdawg.backend.model import MLModel
 
 
 logger = get_logger("feed_processor")
@@ -22,7 +23,7 @@ class FeedProcessor(threading.Thread):
         batch_size: int,
         build_batch_time_window: float,
         events_queue_out: Queue,
-        model,
+        model: MLModel,
         *args,
         **kwargs
     ) -> None:
@@ -40,24 +41,35 @@ class FeedProcessor(threading.Thread):
         logger.debug("Processor started")
 
         while not self._stop_event.is_set():
-            frames_batch: FramesBatchMessage = self._collect_batch()
-            if not len(frames_batch.batch):
-                time.sleep(0.1)
+            frames_batch, disconnected_client = self._collect_batch()
+
+            if disconnected_client:
+                self._events_queue_out.put(disconnected_client)
+
+            if not len(frames_batch):
                 continue
 
-            detections = self._model(
-                [item.frame for item in frames_batch.batch]
-            )
-            for detection, frame_message in zip(
-                detections, frames_batch.batch
-            ):
-                frame_message.detections = detection
+            # detections = self._model([item.frame for item in frames_batch])
+            # for detection, frame_message in zip(detections, frames_batch):
+            #     frame_message.detections = detection
 
-            self._events_queue_out.put(frames_batch)
+            # TODO: A lot of overhead with Ultralytics (copies etc)
+            # ULTRALYTICS draw BB for us
+            processed_frames = self._model(
+                [item.frame for item in frames_batch]
+            )
+            for processed_frame, frame_message in zip(
+                processed_frames, frames_batch
+            ):
+                frame_message.frame = processed_frame
+
+            self._events_queue_out.put(FramesBatchMessage(frames_batch))
 
         logger.debug("Processor stopped")
 
-    def _collect_batch(self) -> FramesBatchMessage:
+    def _collect_batch(
+        self,
+    ) -> Tuple[List[ProcessFrameMessage], Optional[ClientDisconnectedMessage]]:
         time_window = self._time_window
         batch_size = self._batch_size
         queue = self._events_queue_in
@@ -65,7 +77,7 @@ class FeedProcessor(threading.Thread):
         batch: List[ProcessFrameMessage] = []
         while time_window > 0:
             if len(batch) == batch_size:
-                return FramesBatchMessage(batch)
+                return batch, None
 
             start_time = time.perf_counter()
             try:
@@ -73,23 +85,18 @@ class FeedProcessor(threading.Thread):
             except Empty:
                 break
 
-            # TODO: BUG! Disconnection message gets sent while we might wait
-            #       a bit more (time window), before sending frames for already
-            #       disconnected client to RW!
-
             if isinstance(message, ProcessFrameMessage):
                 batch.append(message)
-            elif isinstance(
-                message,
-                (
-                    NewClientConnectedMessage,
-                    ClientDisconnectedMessage,
-                ),
-            ):
+            elif isinstance(message, NewClientConnectedMessage):
                 self._events_queue_out.put(message)
+            elif isinstance(message, ClientDisconnectedMessage):
+                # If a client disconnected, stop collecting a batch and
+                # return to propagate this info downstream asap. A batch might
+                # not be full, but clients don't disconnect often, so it's ok
+                return batch, message
 
             time_window -= time.perf_counter() - start_time
-        return FramesBatchMessage(batch)
+        return batch, None
 
     def stop(self) -> None:
         if not self._stop_event.is_set():

@@ -40,7 +40,7 @@ class TCPServer(BaseServer):
 
     def start_server(self) -> None:
         self._accept_conns_thread = threading.Thread(
-            target=self._accept_connections, daemon=True
+            name="TCPServer", target=self._accept_connections, daemon=True
         )
         self._accept_conns_thread.start()
 
@@ -65,6 +65,7 @@ class TCPServer(BaseServer):
                 address=address,
             )
             thread = threading.Thread(
+                name=f"TCP client {address}",
                 target=self._safe_handle_client,
                 args=(new_client,),
                 daemon=True,
@@ -80,7 +81,9 @@ class TCPServer(BaseServer):
         logger.debug(
             f"{thread_name} started to handle client {client.address}"
         )
-        self._events_queue.put(NewClientConnectedMessage(client_id))
+        self._events_queue.put(
+            NewClientConnectedMessage(client_id, client.address)
+        )
         with self._lock:
             self._connected_clients.add(client_id)
 
@@ -92,7 +95,9 @@ class TCPServer(BaseServer):
                 f"{client.address}. Error: {e}"
             )
 
-        self._events_queue.put(ClientDisconnectedMessage(client_id))
+        self._events_queue.put(
+            ClientDisconnectedMessage(client_id, client.address)
+        )
         with self._lock:
             self._connected_clients.remove(client_id)
 

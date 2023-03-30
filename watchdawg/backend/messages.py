@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, Tuple
 import uuid
 from dataclasses import dataclass
 
@@ -12,11 +12,13 @@ class BusMessage:
 @dataclass
 class ClientDisconnectedMessage(BusMessage):
     client_id: uuid.UUID
+    address: Tuple[str, int]
 
 
 @dataclass
 class NewClientConnectedMessage(BusMessage):
     client_id: uuid.UUID
+    address: Tuple[str, int]
 
 
 @dataclass

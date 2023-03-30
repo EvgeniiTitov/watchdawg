@@ -12,13 +12,18 @@ from watchdawg.util.resources import (
 )
 from watchdawg.backend.messages import BusMessage
 from watchdawg.util.logger import get_logger
+from watchdawg.backend.model import UltralyticsYOLO
 
 
 logger = get_logger("app")
 
 
 class App:
-    def __init__(self):
+    def __init__(
+        self,
+        mode: ResultWriterMode,
+        save_feed_folder: str = Config.PROCESSED_FEED_LOCAL_FOLDER,
+    ) -> None:
         self._server_processor_bus: "Queue[BusMessage]" = Queue(
             Config.DECODED_FRAMES_QUEUE_SIZE
         )
@@ -33,14 +38,19 @@ class App:
             batch_size=Config.MODEL_BATCH_SIZE,
             build_batch_time_window=Config.BUILD_BATCH_TIME_WINDOW,
             events_queue_out=self.processor_writer_bus,
-            model=lambda batch: [{} for _ in batch],  # TODO: !
+            model=UltralyticsYOLO(model="yolov8n.pt"),
         )
+        self._feed_processor.name = "FeedProcessor"  # Thread name
+
         self._results_writer = ResultsWriter(
             events_queue_in=self.processor_writer_bus,
-            mode=ResultWriterMode.SHOW_FRAMES,
-            save_folder=Config.PROCESSED_FEED_LOCAL_FOLDER,
+            mode=mode,
+            save_folder=save_feed_folder,
         )
+        self._results_writer.name = "ResultsWriter"  # Thread name
+
         self._reporter_thread = threading.Thread(
+            name="StateReporter",
             target=self._report_state,
             args=(Config.REPORT_STATE_FREQUENCY,),
             daemon=True,
@@ -74,14 +84,16 @@ class App:
 
             # TODO: Measure CPU usage over interval - blocking?
             # TODO: Add network usage
-            # TODO: Monitor queue sizes
             cpu_usage = get_current_process_cpu_usage()
             memory_usage = get_current_process_ram_usage()
             logger.info(
                 f"Connected clients: {self._server.total_connected_clients}; "
-                f"Active threads: {threading.active_count()}; "
+                f"Active threads: {threading.active_count()} "
+                f"({', '.join([thread.name for thread in threading.enumerate()])}); "  # noqa
                 f"CPU usage: {cpu_usage}%; "
                 f"Memory usage (MB): {memory_usage: .2f}; "
                 f"Server-processor queue: {self._server_processor_bus.qsize()}; "  # noqa
-                f"Processor-writer queue: {self._server_processor_bus.qsize()}"
+                f"Processor-writer queue: {self._server_processor_bus.qsize()}; "  # noqa
+                f"ResultWriter handler queues: "
+                f"{self._results_writer.report_handlers_queue_size()}"
             )
